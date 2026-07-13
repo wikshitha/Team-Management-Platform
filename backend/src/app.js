@@ -5,6 +5,15 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
+import authRoutes from "./routes/authRoutes.js";
+import roleRoutes from "./routes/roleRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+
+import {
+  errorHandler,
+  notFound,
+} from "./middleware/errorMiddleware.js";
+
 const app = express();
 
 app.use(helmet());
@@ -34,35 +43,36 @@ const apiLimiter = rateLimit({
   },
 });
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Too many login attempts. Please try again after 15 minutes.",
+  },
+});
+
 app.use("/api", apiLimiter);
 
 app.get("/api/health", (req, res) => {
   return res.status(200).json({
     success: true,
-    message: "Project Management API is running",
+    message: "Project Management API is running.",
     timestamp: new Date().toISOString(),
   });
 });
 
-app.use((req, res) => {
-  return res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
+app.use("/api/auth/login", loginLimiter);
 
-app.use((error, req, res, next) => {
-  console.error(error);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/roles", roleRoutes);
 
-  const statusCode = error.statusCode || 500;
+app.use(notFound);
 
-  return res.status(statusCode).json({
-    success: false,
-    message:
-      process.env.NODE_ENV === "production"
-        ? "Internal server error"
-        : error.message || "Internal server error",
-  });
-});
+app.use(errorHandler);
 
 export default app;

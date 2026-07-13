@@ -4,18 +4,23 @@ import prisma from "./config/prisma.js";
 
 const PORT = process.env.PORT || 5000;
 
+let server;
+
 const startServer = async () => {
   try {
     await prisma.$connect();
 
     console.log("PostgreSQL database connected successfully.");
 
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(
+        `Health check: http://localhost:${PORT}/api/health`
+      );
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error("Failed to start server:");
+    console.error(error);
     process.exit(1);
   }
 };
@@ -23,9 +28,16 @@ const startServer = async () => {
 const shutdown = async (signal) => {
   console.log(`${signal} received. Closing application...`);
 
-  await prisma.$disconnect();
-
-  process.exit(0);
+  if (server) {
+    server.close(async () => {
+      await prisma.$disconnect();
+      console.log("Application closed successfully.");
+      process.exit(0);
+    });
+  } else {
+    await prisma.$disconnect();
+    process.exit(0);
+  }
 };
 
 process.on("SIGINT", () => shutdown("SIGINT"));
