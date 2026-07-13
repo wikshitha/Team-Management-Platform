@@ -40,3 +40,60 @@ export const getPaginationValues = (pageValue, limitValue) => {
     skip,
   };
 };
+
+export const isValidProjectStatus = (status) => {
+  const allowedStatuses = [
+    "PLANNING",
+    "ACTIVE",
+    "ON_HOLD",
+    "COMPLETED",
+    "ARCHIVED",
+  ];
+
+  return allowedStatuses.includes(status);
+};
+
+export const isValidPriority = (priority) => {
+  const allowedPriorities = [
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "URGENT",
+  ];
+
+  return allowedPriorities.includes(priority);
+};
+
+export const parseOptionalDate = (value) => {
+  if (value === undefined) {
+    return {
+      provided: false,
+      value: undefined,
+      valid: true,
+    };
+  }
+
+  if (value === null || value === "") {
+    return {
+      provided: true,
+      value: null,
+      valid: true,
+    };
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      provided: true,
+      value: null,
+      valid: false,
+    };
+  }
+
+  return {
+    provided: true,
+    value: date,
+    valid: true,
+  };
+};
