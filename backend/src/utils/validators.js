@@ -97,3 +97,18 @@ export const parseOptionalDate = (value) => {
     valid: true,
   };
 };
+
+export const isValidTaskStatus = (status) => {
+  const allowedStatuses = [
+    "TODO",
+    "IN_PROGRESS",
+    "IN_REVIEW",
+    "COMPLETED",
+  ];
+
+  return allowedStatuses.includes(status);
+};
+
+export const normalizeText = (value) => {
+  return value.trim().replace(/\s+/g, " ");
+};

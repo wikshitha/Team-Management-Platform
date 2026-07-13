@@ -17,6 +17,7 @@ import {
 
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
+import { getProjectTasks } from "../controllers/taskController.js";
 
 const router = express.Router();
 
@@ -43,6 +44,8 @@ router.delete(
   authorizeRoles("ADMIN", "PROJECT_MANAGER"),
   removeProjectMember
 );
+
+router.get("/:projectId/tasks", getProjectTasks);
 
 router.patch(
   "/:id/archive",
