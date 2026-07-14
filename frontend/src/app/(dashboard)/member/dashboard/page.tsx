@@ -73,9 +73,38 @@ export default function MemberDashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+ useEffect(() => {
+  let isCancelled = false;
+
+  const initializeDashboard = async () => {
+    try {
+      const response = await getMemberDashboard();
+
+      if (!isCancelled) {
+        setDashboard(response.data);
+      }
+    } catch (error) {
+      if (!isCancelled) {
+        setErrorMessage(
+          getApiErrorMessage(
+            error,
+            "Unable to load your dashboard."
+          )
+        );
+      }
+    } finally {
+      if (!isCancelled) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  void initializeDashboard();
+
+  return () => {
+    isCancelled = true;
+  };
+}, []);
 
   return (
     <RoleGuard allowedRoles={["TEAM_MEMBER"]}>

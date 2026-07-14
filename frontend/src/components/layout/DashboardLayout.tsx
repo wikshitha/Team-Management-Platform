@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -13,34 +12,46 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+const SIDEBAR_STORAGE_KEY =
+  "team_management_sidebar_collapsed";
+
 export default function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] =
-    useState(false);
+    useState<boolean>(() => {
+      if (typeof window === "undefined") {
+        return false;
+      }
+
+      return (
+        localStorage.getItem(SIDEBAR_STORAGE_KEY) ===
+        "true"
+      );
+    });
 
   const [isMobileOpen, setIsMobileOpen] =
     useState(false);
-
-  useEffect(() => {
-    const storedValue = localStorage.getItem(
-      "team_management_sidebar_collapsed"
-    );
-
-    setIsCollapsed(storedValue === "true");
-  }, []);
 
   const handleToggleCollapse = () => {
     setIsCollapsed((currentValue) => {
       const nextValue = !currentValue;
 
       localStorage.setItem(
-        "team_management_sidebar_collapsed",
+        SIDEBAR_STORAGE_KEY,
         String(nextValue)
       );
 
       return nextValue;
     });
+  };
+
+  const handleOpenMobileSidebar = () => {
+    setIsMobileOpen(true);
+  };
+
+  const handleCloseMobileSidebar = () => {
+    setIsMobileOpen(false);
   };
 
   return (
@@ -49,7 +60,7 @@ export default function DashboardLayout({
         isCollapsed={isCollapsed}
         isMobileOpen={isMobileOpen}
         onToggleCollapse={handleToggleCollapse}
-        onCloseMobile={() => setIsMobileOpen(false)}
+        onCloseMobile={handleCloseMobileSidebar}
       />
 
       <div
@@ -59,8 +70,8 @@ export default function DashboardLayout({
         ].join(" ")}
       >
         <Navbar
-          onOpenMobileSidebar={() =>
-            setIsMobileOpen(true)
+          onOpenMobileSidebar={
+            handleOpenMobileSidebar
           }
         />
 

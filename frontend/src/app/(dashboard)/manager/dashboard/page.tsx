@@ -58,8 +58,37 @@ export default function ManagerDashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  let isCancelled = false;
+
+  const initializeDashboard = async () => {
+    try {
+      const response = await getManagerDashboard();
+
+      if (!isCancelled) {
+        setDashboard(response.data);
+      }
+    } catch (error) {
+      if (!isCancelled) {
+        setErrorMessage(
+          getApiErrorMessage(
+            error,
+            "Unable to load the Project Manager dashboard."
+          )
+        );
+      }
+    } finally {
+      if (!isCancelled) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  void initializeDashboard();
+
+  return () => {
+    isCancelled = true;
+  };
+}, []);
 
   return (
     <RoleGuard

@@ -58,8 +58,37 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  let isCancelled = false;
+
+  const initializeDashboard = async () => {
+    try {
+      const response = await getAdminDashboard();
+
+      if (!isCancelled) {
+        setDashboard(response.data);
+      }
+    } catch (error) {
+      if (!isCancelled) {
+        setErrorMessage(
+          getApiErrorMessage(
+            error,
+            "Unable to load the Administrator dashboard."
+          )
+        );
+      }
+    } finally {
+      if (!isCancelled) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  void initializeDashboard();
+
+  return () => {
+    isCancelled = true;
+  };
+}, []);
 
   return (
     <RoleGuard allowedRoles={["ADMIN"]}>
