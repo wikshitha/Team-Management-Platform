@@ -59,7 +59,6 @@ const seedDatabase = async () => {
       },
       update: {
         name: "System Administrator",
-        password: hashedPassword,
         status: "ACTIVE",
         roleId: adminRole.id,
       },

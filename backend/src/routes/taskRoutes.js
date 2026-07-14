@@ -25,7 +25,11 @@ router
     createTask
   );
 
-router.get("/my", getMyTasks);
+router.get(
+  "/my",
+  authorizeRoles("TEAM_MEMBER"),
+   getMyTasks
+  );
 
 router.patch("/:id/status", updateTaskStatus);
 

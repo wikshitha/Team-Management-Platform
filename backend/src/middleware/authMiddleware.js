@@ -54,7 +54,6 @@ export const protect = asyncHandler(async (req, res, next) => {
       id: true,
       name: true,
       email: true,
-      avatar: true,
       status: true,
       role: {
         select: {

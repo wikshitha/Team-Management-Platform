@@ -26,7 +26,6 @@ const projectListSelect = {
       id: true,
       name: true,
       email: true,
-      avatar: true,
       role: {
         select: {
           id: true,
@@ -106,7 +105,7 @@ export const createProject = asyncHandler(async (req, res) => {
     return res.status(400).json({
       success: false,
       message:
-        "Status must be PLANNING, ACTIVE, ON_HOLD, COMPLETED, or ARCHIVED.",
+        "Status must be PLANNING, ACTIVE, ON_HOLD or COMPLETED",
     });
   }
 
@@ -312,7 +311,6 @@ export const getProjectById = asyncHandler(async (req, res) => {
           id: true,
           name: true,
           email: true,
-          avatar: true,
           role: {
             select: {
               id: true,
@@ -334,7 +332,6 @@ export const getProjectById = asyncHandler(async (req, res) => {
               id: true,
               name: true,
               email: true,
-              avatar: true,
               status: true,
               role: {
                 select: {
@@ -363,7 +360,6 @@ export const getProjectById = asyncHandler(async (req, res) => {
               id: true,
               name: true,
               email: true,
-              avatar: true,
             },
           },
         },
@@ -567,45 +563,6 @@ export const updateProject = asyncHandler(async (req, res) => {
   });
 });
 
-export const archiveProject = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const project = await findManageableProject(id, req.user);
-
-  if (!project) {
-    return res.status(404).json({
-      success: false,
-      message:
-        "Project not found or you do not have permission to archive it.",
-    });
-  }
-
-  if (project.status === "ARCHIVED") {
-    return res.status(400).json({
-      success: false,
-      message: "Project is already archived.",
-    });
-  }
-
-  const archivedProject = await prisma.project.update({
-    where: {
-      id,
-    },
-    data: {
-      status: "ARCHIVED",
-    },
-    select: projectListSelect,
-  });
-
-  return res.status(200).json({
-    success: true,
-    message: "Project archived successfully.",
-    data: {
-      project: archivedProject,
-    },
-  });
-});
-
 export const deleteProject = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -633,14 +590,6 @@ export const deleteProject = asyncHandler(async (req, res) => {
     });
   }
 
-  if (project.status !== "ARCHIVED") {
-    return res.status(400).json({
-      success: false,
-      message:
-        "A project must be archived before it can be permanently deleted.",
-    });
-  }
-
   await prisma.project.delete({
     where: {
       id,
@@ -649,6 +598,6 @@ export const deleteProject = asyncHandler(async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: "Project permanently deleted successfully.",
+    message: "Project deleted successfully.",
   });
 });

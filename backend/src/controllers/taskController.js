@@ -44,7 +44,6 @@ const taskListSelect = {
       id: true,
       name: true,
       email: true,
-      avatar: true,
       status: true,
     },
   },
@@ -54,7 +53,6 @@ const taskListSelect = {
       id: true,
       name: true,
       email: true,
-      avatar: true,
       role: {
         select: {
           id: true,
@@ -200,13 +198,6 @@ export const createTask = asyncHandler(async (req, res) => {
       success: false,
       message:
         "Project not found or you do not have permission to create tasks in it.",
-    });
-  }
-
-  if (project.status === "ARCHIVED") {
-    return res.status(400).json({
-      success: false,
-      message: "Tasks cannot be created in an archived project.",
     });
   }
 
@@ -568,7 +559,6 @@ export const getTaskById = asyncHandler(async (req, res) => {
               id: true,
               name: true,
               email: true,
-              avatar: true,
               role: {
                 select: {
                   id: true,
@@ -608,13 +598,6 @@ export const updateTask = asyncHandler(async (req, res) => {
       success: false,
       message:
         "Task not found or you do not have permission to update it.",
-    });
-  }
-
-  if (task.project.status === "ARCHIVED") {
-    return res.status(400).json({
-      success: false,
-      message: "Tasks in archived projects cannot be updated.",
     });
   }
 
@@ -828,14 +811,6 @@ export const updateTaskStatus = asyncHandler(
       });
     }
 
-    if (task.project.status === "ARCHIVED") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Task status cannot be changed in an archived project.",
-      });
-    }
-
     if (task.status === normalizedStatus) {
       return res.status(400).json({
         success: false,
@@ -906,15 +881,7 @@ export const deleteTask = asyncHandler(async (req, res) => {
         "Task not found or you do not have permission to delete it.",
     });
   }
-
-  if (task.project.status === "ARCHIVED") {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Tasks cannot be deleted from an archived project.",
-    });
-  }
-
+  
   await prisma.task.delete({
     where: {
       id,

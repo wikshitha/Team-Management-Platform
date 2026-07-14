@@ -29,7 +29,6 @@ export const getAdminDashboard = asyncHandler(
       totalProjects,
       activeProjects,
       completedProjects,
-      archivedProjects,
       totalTasks,
       completedTasks,
       overdueTasks,
@@ -64,12 +63,6 @@ export const getAdminDashboard = asyncHandler(
       prisma.project.count({
         where: {
           status: "COMPLETED",
-        },
-      }),
-
-      prisma.project.count({
-        where: {
-          status: "ARCHIVED",
         },
       }),
 
@@ -184,7 +177,6 @@ export const getAdminDashboard = asyncHandler(
           totalProjects,
           activeProjects,
           completedProjects,
-          archivedProjects,
           totalTasks,
           completedTasks,
           pendingTasks,
@@ -205,7 +197,6 @@ export const getAdminDashboard = asyncHandler(
               "ACTIVE",
               "ON_HOLD",
               "COMPLETED",
-              "ARCHIVED",
             ]
           ),
 
@@ -246,7 +237,6 @@ export const getManagerDashboard = asyncHandler(
       totalProjects,
       activeProjects,
       completedProjects,
-      archivedProjects,
       totalTasks,
       completedTasks,
       inProgressTasks,
@@ -272,13 +262,6 @@ export const getManagerDashboard = asyncHandler(
         where: {
           ...projectWhere,
           status: "COMPLETED",
-        },
-      }),
-
-      prisma.project.count({
-        where: {
-          ...projectWhere,
-          status: "ARCHIVED",
         },
       }),
 
@@ -407,7 +390,6 @@ export const getManagerDashboard = asyncHandler(
           totalProjects,
           activeProjects,
           completedProjects,
-          archivedProjects,
           totalTeamMembers: uniqueMembers.length,
           totalTasks,
           completedTasks,
@@ -424,7 +406,6 @@ export const getManagerDashboard = asyncHandler(
               "ACTIVE",
               "ON_HOLD",
               "COMPLETED",
-              "ARCHIVED",
             ]
           ),
 
@@ -540,7 +521,7 @@ export const getMemberDashboard = asyncHandler(
             not: "COMPLETED",
           },
           dueDate: {
-            not: null,
+            gte: now,
           },
         },
         take: 5,

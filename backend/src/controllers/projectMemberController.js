@@ -14,7 +14,6 @@ const projectMemberSelect = {
       id: true,
       name: true,
       email: true,
-      avatar: true,
       status: true,
 
       role: {
@@ -95,14 +94,6 @@ export const addProjectMember = asyncHandler(
         success: false,
         message:
           "Project not found or you do not have permission to manage its members.",
-      });
-    }
-
-    if (project.status === "ARCHIVED") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Members cannot be added to an archived project.",
       });
     }
 

@@ -135,7 +135,6 @@ export const getProjectStatistics = asyncHandler(
               id: true,
               name: true,
               email: true,
-              avatar: true,
 
               assignedTasks: {
                 where: {
@@ -171,7 +170,6 @@ export const getProjectStatistics = asyncHandler(
           id: membership.user.id,
           name: membership.user.name,
           email: membership.user.email,
-          avatar: membership.user.avatar,
         },
         assignedAt: membership.assignedAt,
         totalTasks: tasks.length,

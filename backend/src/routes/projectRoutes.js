@@ -1,7 +1,6 @@
 import express from "express";
 
 import {
-  archiveProject,
   createProject,
   deleteProject,
   getProjectById,
@@ -41,7 +40,11 @@ router.get(
 
 router.get("/:projectId/tasks", getProjectTasks);
 
-router.get("/:id/statistics", getProjectStatistics);
+router.get(
+  "/:id/statistics",
+  authorizeRoles("ADMIN", "PROJECT_MANAGER"),
+   getProjectStatistics
+  );
 
 router
   .route("/:id/members")
@@ -55,12 +58,6 @@ router.delete(
   "/:id/members/:userId",
   authorizeRoles("ADMIN", "PROJECT_MANAGER"),
   removeProjectMember
-);
-
-router.patch(
-  "/:id/archive",
-  authorizeRoles("ADMIN", "PROJECT_MANAGER"),
-  archiveProject
 );
 
 router

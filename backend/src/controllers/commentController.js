@@ -15,7 +15,6 @@ const commentSelect = {
       id: true,
       name: true,
       email: true,
-      avatar: true,
 
       role: {
         select: {
@@ -99,14 +98,6 @@ export const createTaskComment = asyncHandler(
         success: false,
         message:
           "Task not found or you do not have permission to comment on it.",
-      });
-    }
-
-    if (task.project.status === "ARCHIVED") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Comments cannot be added to tasks in archived projects.",
       });
     }
 
@@ -211,14 +202,6 @@ export const updateComment = asyncHandler(
       return res.status(403).json({
         success: false,
         message: "You can edit only your own comments.",
-      });
-    }
-
-    if (comment.task.project.status === "ARCHIVED") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Comments in archived projects cannot be updated.",
       });
     }
 

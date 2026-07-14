@@ -56,8 +56,6 @@ export const getNotifications = asyncHandler(
         "TASK_ASSIGNED",
         "TASK_UPDATED",
         "TASK_COMMENT",
-        "DEADLINE_REMINDER",
-        "PROJECT_UPDATED",
         "SYSTEM",
       ];
 

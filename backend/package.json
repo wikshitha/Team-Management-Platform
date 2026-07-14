@@ -1,7 +1,8 @@
 {
-  "name": "backend",
+  "name": "team-management-platform-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "REST API for the Project and Team Task Management Platform",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
@@ -13,9 +14,8 @@
     "prisma:seed": "node prisma/seed.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Wikshitha Umindu",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

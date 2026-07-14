@@ -47,7 +47,6 @@ export const isValidProjectStatus = (status) => {
     "ACTIVE",
     "ON_HOLD",
     "COMPLETED",
-    "ARCHIVED",
   ];
 
   return allowedStatuses.includes(status);

@@ -13,7 +13,6 @@ const userPublicSelect = {
   id: true,
   name: true,
   email: true,
-  avatar: true,
   status: true,
   roleId: true,
   role: {
@@ -188,7 +187,6 @@ export const createUser = asyncHandler(async (req, res) => {
     roleId,
     roleName,
     status = "ACTIVE",
-    avatar,
   } = req.body;
 
   if (!name || !email || !password) {
@@ -269,10 +267,6 @@ export const createUser = asyncHandler(async (req, res) => {
       name: normalizeName(name),
       email: normalizedEmail,
       password: hashedPassword,
-      avatar:
-        typeof avatar === "string" && avatar.trim()
-          ? avatar.trim()
-          : null,
       status: normalizedStatus,
       roleId: role.id,
     },
@@ -290,7 +284,7 @@ export const createUser = asyncHandler(async (req, res) => {
 
 export const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, email, avatar } = req.body;
+  const { name, email } = req.body;
 
   const existingUser = await prisma.user.findUnique({
     where: {
@@ -345,20 +339,6 @@ export const updateUser = asyncHandler(async (req, res) => {
     }
 
     updateData.email = normalizedEmail;
-  }
-
-  if (avatar !== undefined) {
-    if (avatar !== null && typeof avatar !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Avatar must be a valid URL string or null.",
-      });
-    }
-
-    updateData.avatar =
-      typeof avatar === "string" && avatar.trim()
-        ? avatar.trim()
-        : null;
   }
 
   if (Object.keys(updateData).length === 0) {

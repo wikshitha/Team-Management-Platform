@@ -7,7 +7,6 @@ const teamMemberSelect = {
   id: true,
   name: true,
   email: true,
-  avatar: true,
   status: true,
 
   role: {
