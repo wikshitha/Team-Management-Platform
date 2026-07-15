@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { useForm } from "react-hook-form";
+import {
+  useForm,
+  useWatch,
+} from "react-hook-form";
+
 import toast from "react-hot-toast";
 
 import Modal from "@/components/ui/Modal";
@@ -45,22 +52,36 @@ export default function TaskFormModal({
 }: TaskFormModalProps) {
   const isEditing = Boolean(task);
 
-  const [projects, setProjects] = useState<Project[]>(
-    []
-  );
+  const initialProjectId =
+    fixedProjectId ||
+    task?.projectId ||
+    task?.project?.id ||
+    "";
+
+  const [projects, setProjects] = useState<
+    Project[]
+  >([]);
 
   const [members, setMembers] = useState<
     ProjectMember[]
   >([]);
 
-  const [isMembersLoading, setIsMembersLoading] =
-    useState(true);
+  const [
+    membersProjectId,
+    setMembersProjectId,
+  ] = useState("");
+
+  const [
+    isMembersChanging,
+    setIsMembersChanging,
+  ] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: {
       errors,
       isSubmitting,
@@ -69,13 +90,40 @@ export default function TaskFormModal({
     defaultValues: {
       title: "",
       description: "",
-      projectId: fixedProjectId || "",
+      projectId: initialProjectId,
       priority: "MEDIUM",
       dueDate: "",
       assignedToId: "",
     },
   });
 
+  const selectedProjectId =
+    useWatch({
+      control,
+      name: "projectId",
+    }) || "";
+
+  const activeMembers = members.filter(
+    (membership) =>
+      membership.user.status === "ACTIVE"
+  );
+
+  const isInitialMembersLoading =
+    Boolean(
+      isOpen &&
+        selectedProjectId &&
+        !isMembersChanging
+    ) &&
+    membersProjectId !== selectedProjectId;
+
+  const isMembersLoading =
+    isMembersChanging ||
+    isInitialMembersLoading;
+
+  /*
+   * Load projects when the modal is opened from the
+   * main task-management page.
+   */
   useEffect(() => {
     if (!isOpen || fixedProjectId) {
       return;
@@ -91,10 +139,14 @@ export default function TaskFormModal({
         });
 
         if (!isCancelled) {
-          setProjects(response.data.projects);
+          setProjects(
+            response.data.projects ?? []
+          );
         }
       } catch (error) {
         if (!isCancelled) {
+          setProjects([]);
+
           toast.error(
             getApiErrorMessage(
               error,
@@ -102,7 +154,7 @@ export default function TaskFormModal({
             )
           );
         }
-      } 
+      }
     };
 
     void initializeProjects();
@@ -110,8 +162,14 @@ export default function TaskFormModal({
     return () => {
       isCancelled = true;
     };
-  }, [fixedProjectId, isOpen]);
+  }, [
+    fixedProjectId,
+    isOpen,
+  ]);
 
+  /*
+   * Reset the form whenever a task modal opens.
+   */
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -120,25 +178,26 @@ export default function TaskFormModal({
     reset({
       title: task?.title || "",
       description: task?.description || "",
-      projectId:
-        fixedProjectId ||
-        task?.projectId ||
-        "",
+      projectId: initialProjectId,
       priority: task?.priority || "MEDIUM",
-      dueDate: toDateInputValue(task?.dueDate),
-      assignedToId: task?.assignedToId || "",
+      dueDate: toDateInputValue(
+        task?.dueDate
+      ),
+      assignedToId:
+        task?.assignedToId || "",
     });
   }, [
-    fixedProjectId,
+    initialProjectId,
     isOpen,
     reset,
     task,
   ]);
 
+  /*
+   * Load members when editing a task or creating
+   * a task from a fixed project-details page.
+   */
   useEffect(() => {
-    const initialProjectId =
-      fixedProjectId || task?.projectId;
-
     if (!isOpen || !initialProjectId) {
       return;
     }
@@ -148,14 +207,26 @@ export default function TaskFormModal({
     const initializeMembers = async () => {
       try {
         const response =
-          await getProjectMembers(initialProjectId);
+          await getProjectMembers(
+            initialProjectId
+          );
 
         if (!isCancelled) {
-          setMembers(response.data.members);
+          setMembers(
+            response.data.members ?? []
+          );
+
+          setMembersProjectId(
+            initialProjectId
+          );
         }
       } catch (error) {
         if (!isCancelled) {
           setMembers([]);
+
+          setMembersProjectId(
+            initialProjectId
+          );
 
           toast.error(
             getApiErrorMessage(
@@ -164,7 +235,7 @@ export default function TaskFormModal({
             )
           );
         }
-      } 
+      }
     };
 
     void initializeMembers();
@@ -173,29 +244,42 @@ export default function TaskFormModal({
       isCancelled = true;
     };
   }, [
-    fixedProjectId,
+    initialProjectId,
     isOpen,
-    task?.projectId,
   ]);
 
+  /*
+   * Load members after the user selects a project
+   * while creating a new task.
+   */
   const loadMembersForProject = async (
     projectId: string
   ) => {
+    setValue("assignedToId", "");
+
     if (!projectId) {
       setMembers([]);
-      setValue("assignedToId", "");
+      setMembersProjectId("");
       return;
     }
 
     try {
-      setIsMembersLoading(true);
+      setIsMembersChanging(true);
+
+      setMembers([]);
+      setMembersProjectId("");
 
       const response =
         await getProjectMembers(projectId);
 
-      setMembers(response.data.members);
+      setMembers(
+        response.data.members ?? []
+      );
+
+      setMembersProjectId(projectId);
     } catch (error) {
       setMembers([]);
+      setMembersProjectId(projectId);
 
       toast.error(
         getApiErrorMessage(
@@ -204,15 +288,21 @@ export default function TaskFormModal({
         )
       );
     } finally {
-      setIsMembersLoading(false);
+      setIsMembersChanging(false);
     }
   };
 
   const handleProjectChange = async (
     projectId: string
   ) => {
-    setValue("projectId", projectId);
-    setValue("assignedToId", "");
+    setValue(
+      "projectId",
+      projectId,
+      {
+        shouldValidate: true,
+        shouldDirty: true,
+      }
+    );
 
     await loadMembersForProject(projectId);
   };
@@ -223,11 +313,18 @@ export default function TaskFormModal({
     try {
       const input = {
         title: values.title.trim(),
+
         description:
-          values.description.trim() || null,
+          values.description.trim() ||
+          null,
+
         priority: values.priority,
-        dueDate: values.dueDate || null,
+
+        dueDate:
+          values.dueDate || null,
+
         projectId: values.projectId,
+
         assignedToId:
           values.assignedToId || null,
       };
@@ -235,10 +332,12 @@ export default function TaskFormModal({
       if (task) {
         await updateTask(task.id, {
           title: input.title,
-          description: input.description,
+          description:
+            input.description,
           priority: input.priority,
           dueDate: input.dueDate,
-          assignedToId: input.assignedToId,
+          assignedToId:
+            input.assignedToId,
         });
 
         toast.success(
@@ -287,26 +386,33 @@ export default function TaskFormModal({
         className="space-y-5"
       >
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="task-title"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Task title
           </label>
 
           <input
+            id="task-title"
             type="text"
             placeholder="Enter task title"
             className={[
-              "w-full rounded-xl border px-4 py-3 outline-none",
+              "w-full rounded-xl border px-4 py-3 outline-none transition",
               errors.title
-                ? "border-red-400"
+                ? "border-red-400 focus:ring-2 focus:ring-red-100"
                 : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
             ].join(" ")}
             {...register("title", {
-              required: "Task title is required.",
+              required:
+                "Task title is required.",
+
               minLength: {
                 value: 3,
                 message:
                   "Task title must contain at least 3 characters.",
               },
+
               maxLength: {
                 value: 200,
                 message:
@@ -323,52 +429,84 @@ export default function TaskFormModal({
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="task-description"
+            className="mb-2 block text-sm font-medium text-slate-700"
+          >
             Description
           </label>
 
           <textarea
+            id="task-description"
             rows={5}
             placeholder="Describe the task"
-            className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             {...register("description")}
           />
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="task-project"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Project
             </label>
 
             {fixedProjectId ? (
-              <input
-                type="hidden"
-                value={fixedProjectId}
-                {...register("projectId")}
-              />
+              <>
+                <input
+                  type="hidden"
+                  {...register("projectId")}
+                />
+
+                <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-slate-700">
+                  {task?.project?.name ||
+                    projects.find(
+                      (project) =>
+                        project.id ===
+                        fixedProjectId
+                    )?.name ||
+                    "Current project"}
+                </div>
+              </>
             ) : (
               <select
+                id="task-project"
                 disabled={isEditing}
                 className={[
-                  "w-full rounded-xl border bg-white px-4 py-3 outline-none disabled:bg-slate-100",
+                  "w-full rounded-xl border bg-white px-4 py-3 outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100",
                   errors.projectId
-                    ? "border-red-400"
+                    ? "border-red-400 focus:ring-2 focus:ring-red-100"
                     : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
                 ].join(" ")}
                 {...register("projectId", {
                   required:
                     "Project is required.",
-                  onChange: (event) => {
-                    void handleProjectChange(
-                      event.target.value
-                    );
-                  },
                 })}
+                onChange={(event) => {
+                  void handleProjectChange(
+                    event.target.value
+                  );
+                }}
               >
                 <option value="">
-                 Select project
+                  Select project
                 </option>
+
+                {task?.project &&
+                  !projects.some(
+                    (project) =>
+                      project.id ===
+                      task.project.id
+                  ) && (
+                    <option
+                      value={task.project.id}
+                    >
+                      {task.project.name}
+                    </option>
+                  )}
 
                 {projects.map((project) => (
                   <option
@@ -389,54 +527,92 @@ export default function TaskFormModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="task-assignee"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Assign to
             </label>
 
             <select
-              disabled={isMembersLoading}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+              id="task-assignee"
+              disabled={
+                isMembersLoading ||
+                !selectedProjectId
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
               {...register("assignedToId")}
             >
               <option value="">
                 {isMembersLoading
                   ? "Loading members..."
-                  : "Unassigned"}
+                  : !selectedProjectId
+                    ? "Select a project first"
+                    : activeMembers.length === 0
+                      ? "No active project members available"
+                      : "Unassigned"}
               </option>
 
-              {members.map((membership) => (
-                <option
-                  key={membership.user.id}
-                  value={membership.user.id}
-                >
-                  {membership.user.name} —{" "}
-                  {membership.user.email}
-                </option>
-              ))}
+              {activeMembers.map(
+                (membership) => (
+                  <option
+                    key={
+                      membership.user.id
+                    }
+                    value={
+                      membership.user.id
+                    }
+                  >
+                    {membership.user.name}
+                    {" — "}
+                    {membership.user.email}
+                  </option>
+                )
+              )}
             </select>
 
-            <p className="mt-2 text-xs text-slate-500">
-              Only active members assigned to the
-              selected project can receive the task.
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              {isMembersLoading
+                ? "Loading Team Members assigned to this project."
+                : !selectedProjectId
+                  ? "Select a project to view its Team Members."
+                  : activeMembers.length === 0
+                    ? "No active Team Members are assigned to this project."
+                    : `${activeMembers.length} active Team ${
+                        activeMembers.length === 1
+                          ? "Member is"
+                          : "Members are"
+                      } available for assignment.`}
             </p>
           </div>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="task-priority"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Priority
             </label>
 
             <select
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              id="task-priority"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               {...register("priority")}
             >
-              <option value="LOW">Low</option>
+              <option value="LOW">
+                Low
+              </option>
+
               <option value="MEDIUM">
                 Medium
               </option>
-              <option value="HIGH">High</option>
+
+              <option value="HIGH">
+                High
+              </option>
+
               <option value="URGENT">
                 Urgent
               </option>
@@ -444,13 +620,17 @@ export default function TaskFormModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label
+              htmlFor="task-due-date"
+              className="mb-2 block text-sm font-medium text-slate-700"
+            >
               Due date
             </label>
 
             <input
+              id="task-due-date"
               type="date"
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               {...register("dueDate")}
             />
           </div>
@@ -461,15 +641,18 @@ export default function TaskFormModal({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
           </button>
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            disabled={
+              isSubmitting ||
+              isMembersLoading
+            }
+            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting
               ? "Saving..."
