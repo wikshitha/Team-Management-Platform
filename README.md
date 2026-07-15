@@ -249,6 +249,27 @@ Team-Management-Platform/
 
 ---
 
+## 📚 Project Documentation
+
+| Document | Link |
+|----------|------|
+| 🌐 API Documentation (Fern) | https://wikshitha-s-team.docs.buildwithfern.com |
+| 📋 Feature Completion Report | [docs/FeatureReport.md](docs/FeatureReport.md) |
+| 🚀 CI/CD Workflow | [docs/CI-CD.md](docs/CI-CD.md) |
+| 🤖 AI Usage Disclosure | [docs/AI_USAGE_DISCLOSURE.md](docs/AI_USAGE_DISCLOSURE.md) |
+
+---
+
+## 📐 System Diagrams
+
+| Diagram | Link |
+|---------|------|
+| 🗂️ Entity Relationship Diagram (ERD) | [docs/diagrams/ERD.png](docs/diagrams/ERD.png) |
+| 👥 Use Case Diagram | [docs/diagrams/UseCaseDiagram.png](docs/diagrams/UseCaseDiagram.png) |
+| 🏗️ System Architecture Diagram | [docs/diagrams/ArchitectureDiagram.png](docs/diagrams/ArchitectureDiagram.png) |
+
+---
+
 # ⚙️ Setup Instructions
 
 ## Prerequisites
