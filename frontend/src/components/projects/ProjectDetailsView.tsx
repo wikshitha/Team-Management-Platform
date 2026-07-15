@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -21,12 +22,16 @@ import {
   FiUsers,
 } from "react-icons/fi";
 
-import ConfirmModal from "@/components/ui/ConfirmModal";
-
 import PriorityBadge from "@/components/dashboard/PriorityBadge";
-import ProjectStatusBadge from "@/components/projects/ProjectStatusBadge";
-import ProjectFormModal from "@/components/projects/ProjectFormModal";
+
 import AssignMemberModal from "@/components/projects/AssignMemberModal";
+import ProjectFormModal from "@/components/projects/ProjectFormModal";
+import ProjectStatusBadge from "@/components/projects/ProjectStatusBadge";
+
+import TaskCard from "@/components/tasks/TaskCard";
+import TaskFormModal from "@/components/tasks/TaskFormModal";
+
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 import {
   getProjectById,
@@ -34,14 +39,21 @@ import {
   removeProjectMember,
 } from "@/services/projectService";
 
-import { getApiErrorMessage } from "@/utils/apiError";
+import {
+  deleteTask,
+  getProjectTasks,
+} from "@/services/taskService";
+
 import { formatDate } from "@/utils/dateFormat";
+import { getApiErrorMessage } from "@/utils/apiError";
 import { getUserInitials } from "@/utils/userInitials";
 
 import type {
   Project,
   ProjectMember,
 } from "@/types/project";
+
+import type { Task } from "@/types/task";
 
 interface ProjectDetailsViewProps {
   backHref: string;
@@ -63,6 +75,8 @@ export default function ProjectDetailsView({
     ProjectMember[]
   >([]);
 
+  const [tasks, setTasks] = useState<Task[]>([]);
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -75,11 +89,31 @@ export default function ProjectDetailsView({
   const [isAssignOpen, setIsAssignOpen] =
     useState(false);
 
+  const [isCreateTaskOpen, setIsCreateTaskOpen] =
+    useState(false);
+
+  const [editingTask, setEditingTask] =
+    useState<Task | null>(null);
+
   const [removeTarget, setRemoveTarget] =
     useState<ProjectMember | null>(null);
 
+  const [deleteTaskTarget, setDeleteTaskTarget] =
+    useState<Task | null>(null);
+
   const [isRemoving, setIsRemoving] =
     useState(false);
+
+  const [isDeletingTask, setIsDeletingTask] =
+    useState(false);
+
+  const taskBasePath = useMemo(() => {
+    if (backHref.startsWith("/admin")) {
+      return "/admin/tasks";
+    }
+
+    return "/manager/tasks";
+  }, [backHref]);
 
   const loadProject = useCallback(async () => {
     const response =
@@ -95,21 +129,38 @@ export default function ProjectDetailsView({
     setMembers(response.data.members);
   }, [projectId]);
 
+  const loadTasks = useCallback(async () => {
+    const response = await getProjectTasks(
+      projectId,
+      {
+        page: 1,
+        limit: 6,
+      }
+    );
+
+    setTasks(response.data.tasks);
+  }, [projectId]);
+
   const refreshDetails = useCallback(async () => {
     try {
       await Promise.all([
         loadProject(),
         loadMembers(),
+        loadTasks(),
       ]);
     } catch (error) {
       toast.error(
         getApiErrorMessage(
           error,
-          "Unable to refresh project."
+          "Unable to refresh project details."
         )
       );
     }
-  }, [loadMembers, loadProject]);
+  }, [
+    loadMembers,
+    loadProject,
+    loadTasks,
+  ]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -119,9 +170,16 @@ export default function ProjectDetailsView({
         const [
           projectResponse,
           memberResponse,
+          tasksResponse,
         ] = await Promise.all([
           getProjectById(projectId),
+
           getProjectMembers(projectId),
+
+          getProjectTasks(projectId, {
+            page: 1,
+            limit: 6,
+          }),
         ]);
 
         if (!isCancelled) {
@@ -131,6 +189,10 @@ export default function ProjectDetailsView({
 
           setMembers(
             memberResponse.data.members
+          );
+
+          setTasks(
+            tasksResponse.data.tasks
           );
 
           setErrorMessage("");
@@ -190,12 +252,61 @@ export default function ProjectDetailsView({
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!deleteTaskTarget) {
+      return;
+    }
+
+    try {
+      setIsDeletingTask(true);
+
+      await deleteTask(deleteTaskTarget.id);
+
+      toast.success(
+        "Task deleted successfully."
+      );
+
+      setDeleteTaskTarget(null);
+
+      await refreshDetails();
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Unable to delete task."
+        )
+      );
+    } finally {
+      setIsDeletingTask(false);
+    }
+  };
+
+  const handleProjectSaved = async () => {
+    setIsEditOpen(false);
+    await refreshDetails();
+  };
+
+  const handleMemberAssigned = async () => {
+    await refreshDetails();
+  };
+
+  const handleTaskSaved = async () => {
+    setIsCreateTaskOpen(false);
+    setEditingTask(null);
+
+    await refreshDetails();
+  };
+
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="animate-pulse space-y-6">
         <div className="h-10 w-72 rounded bg-slate-200" />
+
         <div className="h-52 rounded-2xl bg-slate-200" />
+
         <div className="h-80 rounded-2xl bg-slate-200" />
+
+        <div className="h-96 rounded-2xl bg-slate-200" />
       </div>
     );
   }
@@ -208,12 +319,13 @@ export default function ProjectDetailsView({
         </h1>
 
         <p className="mt-2 text-sm text-red-700">
-          {errorMessage}
+          {errorMessage ||
+            "Project information is unavailable."}
         </p>
 
         <Link
           href={backHref}
-          className="mt-6 inline-flex rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white"
+          className="mt-6 inline-flex rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
         >
           Return to projects
         </Link>
@@ -226,14 +338,14 @@ export default function ProjectDetailsView({
       <header>
         <Link
           href={backHref}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600"
         >
           <FiArrowLeft />
           Back to projects
         </Link>
 
         <div className="mt-5 flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-bold text-slate-900">
                 {project.name}
@@ -248,7 +360,7 @@ export default function ProjectDetailsView({
               />
             </div>
 
-            <p className="mt-3 max-w-3xl leading-7 text-slate-600">
+            <p className="mt-3 max-w-3xl whitespace-pre-wrap leading-7 text-slate-600">
               {project.description ||
                 "No project description has been provided."}
             </p>
@@ -260,7 +372,7 @@ export default function ProjectDetailsView({
               onClick={() =>
                 setIsAssignOpen(true)
               }
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               <FiPlus />
               Add member
@@ -269,9 +381,20 @@ export default function ProjectDetailsView({
             <button
               type="button"
               onClick={() =>
+                setIsCreateTaskOpen(true)
+              }
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <FiPlus />
+              Create task
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
                 setIsEditOpen(true)
               }
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               <FiEdit2 />
               Edit project
@@ -281,7 +404,7 @@ export default function ProjectDetailsView({
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <FiUsers className="text-2xl text-blue-600" />
 
           <p className="mt-4 text-3xl font-bold text-slate-900">
@@ -291,9 +414,9 @@ export default function ProjectDetailsView({
           <p className="mt-1 text-sm text-slate-500">
             Project members
           </p>
-        </div>
+        </article>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <FiList className="text-2xl text-violet-600" />
 
           <p className="mt-4 text-3xl font-bold text-slate-900">
@@ -303,9 +426,9 @@ export default function ProjectDetailsView({
           <p className="mt-1 text-sm text-slate-500">
             Project tasks
           </p>
-        </div>
+        </article>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <FiCalendar className="text-2xl text-emerald-600" />
 
           <p className="mt-4 font-bold text-slate-900">
@@ -315,9 +438,9 @@ export default function ProjectDetailsView({
           <p className="mt-1 text-sm text-slate-500">
             Start date
           </p>
-        </div>
+        </article>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <FiCalendar className="text-2xl text-red-600" />
 
           <p className="mt-4 font-bold text-slate-900">
@@ -327,11 +450,11 @@ export default function ProjectDetailsView({
           <p className="mt-1 text-sm text-slate-500">
             Due date
           </p>
-        </div>
+        </article>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-5">
+        <div className="flex flex-col justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
               Project Team
@@ -347,7 +470,7 @@ export default function ProjectDetailsView({
             onClick={() =>
               setIsAssignOpen(true)
             }
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
             <FiPlus />
             Add member
@@ -395,7 +518,11 @@ export default function ProjectDetailsView({
                   <p className="hidden text-sm text-slate-500 sm:block">
                     {membership.user._count
                       ?.assignedTasks || 0}{" "}
-                    assigned tasks
+                    assigned task
+                    {(membership.user._count
+                      ?.assignedTasks || 0) === 1
+                      ? ""
+                      : "s"}
                   </p>
 
                   <button
@@ -403,13 +530,67 @@ export default function ProjectDetailsView({
                     onClick={() =>
                       setRemoveTarget(membership)
                     }
-                    className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                    className="rounded-lg p-2 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                     title="Remove member"
+                    aria-label={`Remove ${membership.user.name}`}
                   >
                     <FiTrash2 />
                   </button>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Project Tasks
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              The six most recent tasks created for this
+              project.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setIsCreateTaskOpen(true)
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            <FiPlus />
+            Create task
+          </button>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div className="py-12 text-center">
+            <FiList className="mx-auto text-5xl text-slate-300" />
+
+            <p className="mt-4 font-semibold text-slate-800">
+              No project tasks
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Create the first task for this project.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                detailsHref={`${taskBasePath}/${task.id}`}
+                canManage
+                onEdit={setEditingTask}
+                onDelete={setDeleteTaskTarget}
+              />
             ))}
           </div>
         )}
@@ -421,7 +602,7 @@ export default function ProjectDetailsView({
         onClose={() =>
           setIsEditOpen(false)
         }
-        onSaved={refreshDetails}
+        onSaved={handleProjectSaved}
       />
 
       <AssignMemberModal
@@ -430,7 +611,28 @@ export default function ProjectDetailsView({
         onClose={() =>
           setIsAssignOpen(false)
         }
-        onAssigned={refreshDetails}
+        onAssigned={
+          handleMemberAssigned
+        }
+      />
+
+      <TaskFormModal
+        isOpen={isCreateTaskOpen}
+        fixedProjectId={projectId}
+        onClose={() =>
+          setIsCreateTaskOpen(false)
+        }
+        onSaved={handleTaskSaved}
+      />
+
+      <TaskFormModal
+        isOpen={Boolean(editingTask)}
+        task={editingTask}
+        fixedProjectId={projectId}
+        onClose={() =>
+          setEditingTask(null)
+        }
+        onSaved={handleTaskSaved}
       />
 
       <ConfirmModal
@@ -443,6 +645,18 @@ export default function ProjectDetailsView({
           setRemoveTarget(null)
         }
         onConfirm={handleRemoveMember}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTaskTarget)}
+        title="Delete task"
+        message={`Are you sure you want to permanently delete "${deleteTaskTarget?.title}"? Its comments will also be removed.`}
+        confirmLabel="Delete task"
+        isSubmitting={isDeletingTask}
+        onClose={() =>
+          setDeleteTaskTarget(null)
+        }
+        onConfirm={handleDeleteTask}
       />
     </div>
   );
