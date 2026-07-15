@@ -113,3 +113,37 @@ export interface UserMutationResponse {
     user: SystemUser;
   };
 }
+
+export interface TeamMemberListItem {
+  id: string;
+  name: string;
+  email: string;
+  status: "ACTIVE" | "INACTIVE";
+  createdAt: string;
+
+  role: {
+    id: string;
+    name: "TEAM_MEMBER";
+    description?: string | null;
+  };
+
+  _count?: {
+    projectMembers?: number;
+    assignedTasks?: number;
+  };
+}
+
+export interface TeamMemberFilters {
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface GetTeamMembersResponse {
+  success: boolean;
+
+  data: {
+    members: TeamMemberListItem[];
+    pagination: PaginationData;
+  };
+}

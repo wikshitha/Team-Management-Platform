@@ -3,9 +3,11 @@ import api from "@/services/api";
 import type {
   CreateUserInput,
   GetRolesResponse,
+  GetTeamMembersResponse,
   GetUserResponse,
   GetUsersParams,
   GetUsersResponse,
+  TeamMemberFilters,
   UpdateUserInput,
   UpdateUserRoleInput,
   UpdateUserStatusInput,
@@ -104,3 +106,17 @@ export const getRoles =
 
     return response.data;
   };
+
+export const getTeamMembers = async (
+  params: TeamMemberFilters
+): Promise<GetTeamMembersResponse> => {
+  const response =
+    await api.get<GetTeamMembersResponse>(
+      "/team-members",
+      {
+        params,
+      }
+    );
+
+  return response.data;
+};  
