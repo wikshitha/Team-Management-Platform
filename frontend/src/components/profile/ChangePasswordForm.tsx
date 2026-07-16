@@ -53,6 +53,8 @@ export default function ChangePasswordForm() {
         currentPassword:
           values.currentPassword,
         newPassword: values.newPassword,
+        confirmPassword:
+          values.confirmPassword,
       });
 
       toast.success(

@@ -33,7 +33,10 @@ import type {
 } from "@/types/project";
 
 import type { Task } from "@/types/task";
-import type { TaskFormValues } from "@/components/tasks/taskFormTypes";
+
+import type {
+  TaskFormValues,
+} from "@/components/tasks/taskFormTypes";
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -120,12 +123,24 @@ export default function TaskFormModal({
     isMembersChanging ||
     isInitialMembersLoading;
 
+  const currentProjectName =
+    task?.project?.name ||
+    projects.find(
+      (project) =>
+        project.id === initialProjectId
+    )?.name ||
+    "Current project";
+
   /*
-   * Load projects when the modal is opened from the
-   * main task-management page.
+   * Load projects only when creating a task from
+   * the main task-management page.
    */
   useEffect(() => {
-    if (!isOpen || fixedProjectId) {
+    if (
+      !isOpen ||
+      fixedProjectId ||
+      isEditing
+    ) {
       return;
     }
 
@@ -164,11 +179,13 @@ export default function TaskFormModal({
     };
   }, [
     fixedProjectId,
+    isEditing,
     isOpen,
   ]);
 
   /*
-   * Reset the form whenever a task modal opens.
+   * Reset form data whenever the modal opens or
+   * the selected task changes.
    */
   useEffect(() => {
     if (!isOpen) {
@@ -176,15 +193,17 @@ export default function TaskFormModal({
     }
 
     reset({
-      title: task?.title || "",
-      description: task?.description || "",
+      title: task?.title ?? "",
+      description:
+        task?.description ?? "",
       projectId: initialProjectId,
-      priority: task?.priority || "MEDIUM",
+      priority:
+        task?.priority ?? "MEDIUM",
       dueDate: toDateInputValue(
         task?.dueDate
       ),
       assignedToId:
-        task?.assignedToId || "",
+        task?.assignedToId ?? "",
     });
   }, [
     initialProjectId,
@@ -194,11 +213,14 @@ export default function TaskFormModal({
   ]);
 
   /*
-   * Load members when editing a task or creating
-   * a task from a fixed project-details page.
+   * Load project members when editing a task or
+   * creating one from a fixed project page.
    */
   useEffect(() => {
-    if (!isOpen || !initialProjectId) {
+    if (
+      !isOpen ||
+      !initialProjectId
+    ) {
       return;
     }
 
@@ -249,13 +271,15 @@ export default function TaskFormModal({
   ]);
 
   /*
-   * Load members after the user selects a project
-   * while creating a new task.
+   * Load members when the user manually selects
+   * a project while creating a task.
    */
   const loadMembersForProject = async (
     projectId: string
   ) => {
-    setValue("assignedToId", "");
+    setValue("assignedToId", "", {
+      shouldDirty: true,
+    });
 
     if (!projectId) {
       setMembers([]);
@@ -265,7 +289,6 @@ export default function TaskFormModal({
 
     try {
       setIsMembersChanging(true);
-
       setMembers([]);
       setMembersProjectId("");
 
@@ -295,15 +318,6 @@ export default function TaskFormModal({
   const handleProjectChange = async (
     projectId: string
   ) => {
-    setValue(
-      "projectId",
-      projectId,
-      {
-        shouldValidate: true,
-        shouldDirty: true,
-      }
-    );
-
     await loadMembersForProject(projectId);
   };
 
@@ -323,7 +337,8 @@ export default function TaskFormModal({
         dueDate:
           values.dueDate || null,
 
-        projectId: values.projectId,
+        projectId:
+          values.projectId,
 
         assignedToId:
           values.assignedToId || null,
@@ -454,29 +469,26 @@ export default function TaskFormModal({
               Project
             </label>
 
-            {fixedProjectId ? (
+            {isEditing ||
+            fixedProjectId ? (
               <>
                 <input
                   type="hidden"
-                  {...register("projectId")}
+                  {...register("projectId", {
+                    required:
+                      "Project is required.",
+                  })}
                 />
 
                 <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-slate-700">
-                  {task?.project?.name ||
-                    projects.find(
-                      (project) =>
-                        project.id ===
-                        fixedProjectId
-                    )?.name ||
-                    "Current project"}
+                  {currentProjectName}
                 </div>
               </>
             ) : (
               <select
                 id="task-project"
-                disabled={isEditing}
                 className={[
-                  "w-full rounded-xl border bg-white px-4 py-3 outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100",
+                  "w-full rounded-xl border bg-white px-4 py-3 outline-none transition",
                   errors.projectId
                     ? "border-red-400 focus:ring-2 focus:ring-red-100"
                     : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
@@ -484,29 +496,17 @@ export default function TaskFormModal({
                 {...register("projectId", {
                   required:
                     "Project is required.",
+
+                  onChange: (event) => {
+                    void handleProjectChange(
+                      event.target.value
+                    );
+                  },
                 })}
-                onChange={(event) => {
-                  void handleProjectChange(
-                    event.target.value
-                  );
-                }}
               >
                 <option value="">
                   Select project
                 </option>
-
-                {task?.project &&
-                  !projects.some(
-                    (project) =>
-                      project.id ===
-                      task.project.id
-                  ) && (
-                    <option
-                      value={task.project.id}
-                    >
-                      {task.project.name}
-                    </option>
-                  )}
 
                 {projects.map((project) => (
                   <option

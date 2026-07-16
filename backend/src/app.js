@@ -51,13 +51,21 @@ const apiLimiter = rateLimit({
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+
+  limit:
+    process.env.NODE_ENV === "production"
+      ? 10
+      : 100,
+
   standardHeaders: true,
   legacyHeaders: false,
+
+  skipSuccessfulRequests: true,
+
   message: {
     success: false,
     message:
-      "Too many login attempts. Please try again after 15 minutes.",
+      "Too many unsuccessful login attempts. Please try again after 15 minutes.",
   },
 });
 
